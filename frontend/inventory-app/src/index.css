@@ -1,0 +1,154 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  background: aliceblue;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+main{
+  min-height: calc(100vh - 100px);
+}
+
+.headerLink{
+  color: rgb(220, 230, 239);
+  
+  text-decoration: none;
+  background-color: transparent;
+  border: none;
+}
+
+.headerLink:hover{
+  color: rgb(227, 235, 243);
+}
+
+.footer{
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 50px;
+}
+
+.surveyQs{
+  border: 1px dashed gray;
+  border-radius: 10px;
+  padding: 20px;
+  background-color: rgb(211, 234, 240);
+  position: relative;
+}
+
+.resultsQs{
+  flex-grow: 5;
+  margin: 10;
+}
+
+.closeBtn{
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 10px;
+}
+
+.displaySurvey{
+  border: 1px solid gray;
+  border-radius: 10px;
+  padding: 20px;
+  background-color: rgb(211, 234, 240);
+  margin-top: 20px;
+  max-width: 60%;
+  margin: 20px auto;
+}
+
+.displaySurveyListTable{
+  max-width: 60%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+table{
+  margin: 0 auto;
+}
+
+.dashboardTableSmall {
+  font-size: 12px;
+  color: gray;
+  text-decoration: none;
+}
+
+.dashboardTableLarge {
+  font-size: 18px;
+}
+
+.linkSmall{
+  color: rgb(96, 96, 96);
+}
+
+.createSrvyBtn{
+  width: 40%;
+  margin-top: 10;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.06) 0px 1px 2px 0px;
+}
+
+.resultsTitle{
+  font-weight: bold;
+  text-align: center;
+  padding-top: 20px;
+  background-color: aliceblue;
+  margin-bottom: 0px;
+}
+
+.resultsSurveyTitle{
+  text-align: center;
+  background-color: aliceblue;
+  padding-bottom: 15px;
+  margin-top: 0px;
+  border-bottom: rgb(201, 210, 218) solid 3px;
+  box-shadow: rgba(255, 255, 255, 0.1) 0px 1px 1px 0px inset, rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px;
+}
+
+.dashboardTitle{
+  text-align: center;
+  background-color: aliceblue;
+  padding-bottom: 15px;
+  margin-top: 0px;
+  border-bottom: rgb(231, 241, 249) solid 3px;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.06) 0px 1px 2px 0px;
+}
+
+.resultsbg{
+  background-color: rgb(231, 243, 246);
+}
+
+.dashboardbg{
+  background-color: rgb(237, 244, 245);
+  width: 100%;
+}
+
+.splashTop{
+  background-color: aliceblue;
+  position: relative;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px;
+}
+
+
+.splashText{
+  text-align: left;
+}
+
+.splashImg{
+  width: 80%;
+  box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px;
+}
+
+.splashSection{
+  background-color: rgb(238, 245, 245);
+}
