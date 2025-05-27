@@ -1,30 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Navbar, Nav, Container } from "react-bootstrap";
-import { Person } from "react-bootstrap-icons";
-import { useAuth0 } from "@auth0/auth0-react";
-import { logoutUrl } from "../../variables/constants";
+import { useAuth } from "../../hooks/AuthContext";
 import logo from "../../images/gclogo.png";
+import { useNavigate } from "react-router-dom";
 
 export function Header() {
-  const { loginWithRedirect, logout, user, isAuthenticated } = useAuth0();
-  const [userData, setUserData] = useState(null);
-
-  useEffect(() => {
-    if (!userData && user) {
-      setUserData({ name: user.name, _id: user.sub });
-    }
-
-    // ✅ 로그인 사용자 정보 콘솔 출력
-    console.log("🔍 현재 로그인 상태:");
-    console.log("isAuthenticated:", isAuthenticated);
-    console.log("user:", user);
-  }, [user, isAuthenticated]);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
       <header>
         <Navbar bg="primary" variant="dark" expand="lg">
           <Container>
-            <Navbar.Brand href={isAuthenticated ? "/dashboard" : "/"}>
+            <Navbar.Brand href={user ? "/dashboard" : "/"}>
               <img
                   alt="logo"
                   src={logo}
@@ -47,19 +35,30 @@ export function Header() {
                 {user ? (
                     <>
                       <Navbar.Text className="me-3">
-                        {user.name} 님 환영합니다
+                        {user.email} 님 환영합니다
                       </Navbar.Text>
                       <button
-                          className="headerLink"
-                          onClick={() => logout({ returnTo: logoutUrl })}
+                          className="btn btn-outline-light"
+                          onClick={logout}
                       >
                         로그아웃
                       </button>
                     </>
                 ) : (
-                    <button className="headerLink" onClick={loginWithRedirect}>
-                      <Person /> 로그인 또는 회원가입
-                    </button>
+                    <>
+                      <button
+                          className="btn btn-outline-light me-2"
+                          onClick={() => navigate("/login")}
+                      >
+                        로그인
+                      </button>
+                      <button
+                          className="btn btn-light text-primary fw-bold"
+                          onClick={() => navigate("/register")}
+                      >
+                        회원가입
+                      </button>
+                    </>
                 )}
               </Nav>
             </Navbar.Collapse>

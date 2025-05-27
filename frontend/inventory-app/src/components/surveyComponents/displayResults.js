@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Container,
@@ -10,10 +9,11 @@ import {
   MultipleChoiceResults
 } from "./displayResultsComponents";
 import { serverUrl } from "../../variables/constants";
+import { useAuth } from "../../hooks/AuthContext"; // ✅ JWT AuthContext 사용
 
 export function DisplayResults() {
   const { id } = useParams();
-  const { getAccessTokenSilently } = useAuth0();
+  const { token } = useAuth(); // ✅ JWT 토큰 받기
   const [survey, setSurvey] = useState(null);
   const [results, setResults] = useState(
       <div style={{ textAlign: "center", padding: 20 }}>
@@ -23,7 +23,6 @@ export function DisplayResults() {
 
   const fetchSurveyResults = useCallback(async () => {
     try {
-      const token = await getAccessTokenSilently();
       const res = await fetch(`${serverUrl}/api/surveys/${id}`, {
         method: "GET",
         headers: {
@@ -36,11 +35,13 @@ export function DisplayResults() {
     } catch (error) {
       console.error("설문 결과 가져오기 실패:", error);
     }
-  }, [getAccessTokenSilently, id]);
+  }, [token, id]);
 
   useEffect(() => {
-    fetchSurveyResults();
-  }, [fetchSurveyResults]);
+    if (token) {
+      fetchSurveyResults();
+    }
+  }, [fetchSurveyResults, token]);
 
   useEffect(() => {
     if (survey) {

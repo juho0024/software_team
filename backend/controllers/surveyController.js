@@ -1,180 +1,114 @@
-//CRUD options to update database with inventory items
 const asyncHandler = require("express-async-handler");
 const Survey = require("../models/surveyModel");
 const User = require("../models/userModel");
 
-// get all surveys
-//@route GET /surveys
+// 설문 가져오기
 const getSurvey = asyncHandler(async (req, res) => {
-  
   const survey = await Survey.findById(req.params.id);
   res.status(200).json(survey);
 });
 
-// get surveys by user
-//only sending out survey title, id and number of responses
-//@route GET /surveys-by-user
+// 사용자별 설문 목록 가져오기
 const getSurveysByUser = asyncHandler(async (req, res) => {
-  //grab survey ids from database
   const user = await User.findById(req.params.id);
-  const surveyIds = [...user.surveys];
-
   if (!user) {
     res.status(400);
     throw new Error("That user was not found.");
-  } else if (surveyIds.length === 0) {
-    res.status(401).json("No surveys were found");
   }
-
-  //grab surveys from database
-  let surveyList = [];
+  const surveyIds = [...user.surveys];
+  if (surveyIds.length === 0) {
+    return res.status(200).json("No surveys were found");
+  }
+  const surveyList = [];
   for (let i = 0; i < surveyIds.length; i++) {
     const survey = await Survey.findById(surveyIds[i]);
-    if (!survey) {
-      console.log("no survey found");
-    } else {
-      const necessaryData = {
+    if (survey) {
+      surveyList.push({
         title: survey.title,
-        responseTotal: survey.questions[0].responses.length,
+        responseTotal: survey.questions[0]?.responses?.length || 0,
         _id: survey._id,
-      };
-      surveyList.push(necessaryData);
+      });
     }
   }
-  //send surveys over
   res.status(200).json(surveyList);
 });
 
-//create new surveys
-//@route POST /surveys/create
+// 생성 또는 업데이트
 const createandUpdateSurvey = asyncHandler(async (req, res) => {
-  //check if the surveyid is already there
-  //if there, the survey must be updated
-  //if not there, the survey must be created
-  let findSurvey = await Survey.findById(req.body.survey_id);
-  console.log('findSurvey= " + findSurvey');
-  if(findSurvey) {
-    //place questions in an array
-    let questions = [...req.body.questions];
+  const { questions, title, description, user_id, creationTime, survey_id } = req.body;
 
-    //check if questions exist in body
-    //if question exists, add responses and array to question
-    questions.map((question) => {
-      let index = findSurvey.questions.findIndex(
-        (findSurveyQuestion) => findSurveyQuestion._id === question._id
-      );
-      if (index > -1) {
-        question.responses = findSurvey.questions[index].responses;
-      }
-    });
-
-    //send survey to database for updating
-    const updatedSurvey = await Survey.findByIdAndUpdate(
-      req.body.survey_id,
-      {
-        questions: questions,
-        title: req.body.title,
-        description: req.body.description,
-      },
-      { new: true }
-    );
-    res.status(200).json(updatedSurvey);
+  let existing = await Survey.findById(survey_id);
+  if (existing) {
+    const updated = await Survey.findByIdAndUpdate(survey_id, {
+      questions,
+      title,
+      description,
+    }, { new: true });
+    return res.status(200).json({ success: true, survey: updated });
   } else {
-    const survey = await Survey.create({
-      questions: req.body.questions,
-      user_id: req.body.user_id,
-      title: req.body.title,
-      description: req.body.description,
-      creationTime: req.body.creationTime,
-      _id: req.body.survey_id,
+    const newSurvey = await Survey.create({
+      questions,
+      title,
+      description,
+      user_id,
+      creationTime,
+      _id: survey_id,
     });
-    console.log("survey = " + survey);
-
-    let user = await User.findById(req.body.user_id);
+    const user = await User.findById(user_id);
     if (user) {
-      //push this survey to the user too
-      const newSurveys = [...user.surveys];
-      newSurveys.push(req.body.survey_id);
-      let updatedUser = await User.findOneAndUpdate(
-        { _id: req.body.user_id },
-        { surveys: newSurveys }
-      );
-      console.log(updatedUser);
-      res.status(200).json(updatedUser);
-    } else {
-      res
-        .status(402)
-        .json(
-          "This user was not found.  The survey might have been added to the database though."
-        );
+      user.surveys.push(survey_id);
+      await user.save();
     }
+    return res.status(201).json({ success: true, survey: newSurvey });
   }
 });
 
-//update surveys
-//@route PUT /surveys/update
-const updateSurvey = asyncHandler(async (req, res) => {
-  const survey = await Survey.findById(req.params.id);
-  if (!survey) {
-    res.status(400);
-    throw new Error("That Survey was not found.");
-  }
-  const updatedSurvey = await Survey.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true }
-  );
-  res.status(200).json(updatedSurvey);
-});
-
-//update surveys with responses
-//@route put
+// 응답 저장
 const saveResponsesToSurvey = asyncHandler(async (req, res) => {
   const survey = await Survey.findById(req.params.id);
   if (!survey) {
-    res.status(400);
-    throw new Error("That Survey was not found.");
+    res.status(404);
+    throw new Error("Survey not found");
   }
-  //getting questions and the _id from the body
-  const { questions, _id } = req.body;
-  //new questions comes from database
-  let newQuestions = [...survey.questions];
-
-  newQuestions.forEach((originalQuestion) => {
-    //find matching index
-    let index = questions.findIndex(
-      (submittedQuestion) => submittedQuestion._id === originalQuestion._id
-    );
-    //push responses onto responses array
-    originalQuestion.responses.push(questions[index].response);
+  const { questions } = req.body;
+  const updatedQuestions = survey.questions.map(original => {
+    const incoming = questions.find(q => q._id === original._id);
+    if (incoming && incoming.response) {
+      return {
+        ...original,
+        responses: [...original.responses, incoming.response]
+      };
+    }
+    return original;
   });
-
-  const updatedSurvey = await Survey.findByIdAndUpdate(
-    survey._id,
-    { questions: newQuestions },
-    { new: true }
-  );
-  res.status(200).json(updatedSurvey);
+  survey.questions = updatedQuestions;
+  const saved = await survey.save();
+  res.status(200).json({ success: true, survey: saved });
 });
 
-//delete surveys
-//@route DELETE /surveys/delete
-const deleteSurvey = asyncHandler(async (req, res) => {
-  const survey = await Survey.findById(req.params.id);
+const updateSurvey = asyncHandler(async (req, res) => {
+  const survey = await Survey.findByIdAndUpdate(req.params.id, req.body, { new: true });
   if (!survey) {
-    res.status(400);
-    throw new Error("That Survey was not found.");
+    res.status(404);
+    throw new Error("Survey not found");
   }
-  await Survey.deleteOne({ _id: req.params.id });
-  const existState = await Survey.findOne({ _id: req.params.id });
-  res.status(200).json({ id: req.params.id, exists: existState });
+  res.status(200).json({ success: true, survey });
+});
+
+const deleteSurvey = asyncHandler(async (req, res) => {
+  const deleted = await Survey.findByIdAndDelete(req.params.id);
+  if (!deleted) {
+    res.status(404);
+    throw new Error("Survey not found");
+  }
+  res.status(200).json({ success: true });
 });
 
 module.exports = {
   getSurvey,
+  getSurveysByUser,
   createandUpdateSurvey,
   updateSurvey,
   deleteSurvey,
-  saveResponsesToSurvey,
-  getSurveysByUser,
+  saveResponsesToSurvey
 };

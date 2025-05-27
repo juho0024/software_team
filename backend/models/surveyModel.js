@@ -1,12 +1,14 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
-const surveySchema = mongoose.Schema({
-    questions: {type: [{}], required: true},
-    user_id: {type: String, required: true},
-    title: {type: String},
-    description: {type: String},
-    creationTime: {type: String},
-    _id: {type: String}
-})
+const surveySchema = mongoose.Schema(
+  {
+    questions: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    user_id: { type: mongoose.Schema.Types.String, ref: 'User', required: true },
+    title: { type: String, default: '' },
+    description: { type: String, default: '' },
+    creationTime: { type: String, default: () => new Date().toISOString() }
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model('Survey', surveySchema);

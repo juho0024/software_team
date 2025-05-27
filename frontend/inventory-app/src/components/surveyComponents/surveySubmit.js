@@ -1,22 +1,47 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button } from 'react-bootstrap';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export function SurveySubmit() {
-    const navigate = useNavigate();
-    const { id } = useParams();
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
+    const [user, setUser] = useState(null);
+    const [token, setToken] = useState(localStorage.getItem('token') || '');
+
+    useEffect(() => {
+        if (token) {
+            try {
+                const decoded = JSON.parse(atob(token.split('.')[1]));
+                setUser({
+                    _id: decoded._id,
+                    name: decoded.name,
+                    email: decoded.email
+                });
+            } catch (e) {
+                console.error("❌ JWT 디코딩 실패:", e);
+                setToken('');
+                setUser(null);
+                localStorage.removeItem('token');
+            }
+        } else {
+            setUser(null);
+        }
+    }, [token]);
+
+    const login = (token) => {
+        setToken(token);
+        localStorage.setItem('token', token);
+    };
+
+    const logout = () => {
+        setToken('');
+        setUser(null);
+        localStorage.removeItem('token');
+    };
 
     return (
-        <Card style={{ margin: 'auto', width: '40%', marginTop: 20 }}>
-            <Card.Header>설문 제출이 완료되었습니다.</Card.Header>
-            <Card.Body>
-                <Card.Text>
-                    다른 응답을 제출하고 싶다면, 아래 버튼을 클릭하세요.
-                </Card.Text>
-                <Button variant="outline-info" onClick={() => navigate(`/display-survey/${id}`)}>
-                    다른 응답 제출하기
-                </Button>
-            </Card.Body>
-        </Card>
+        <AuthContext.Provider value={{ user, token, login, logout }}>
+            {children}
+        </AuthContext.Provider>
     );
 }
+
+export const useAuth = () => useContext(AuthContext);

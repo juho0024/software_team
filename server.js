@@ -1,69 +1,70 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
 const dotenv = require('dotenv').config();
+const cors = require('cors');
 const { connectDB } = require('./backend/config/db');
-const cors = require('cors')
-const { auth } = require('express-openid-connect');
 
+// 라우터
+const surveysRouter = require('./backend/routes/surveys');
+const usersRouter = require('./backend/routes/users');
 
-const serverUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000': 'https://www.surveymaker.app';
-
-
-
-
+const app = express();
 const port = process.env.PORT || 8080;
 
-var surveysRouter = require('./backend/routes/surveys');
-var usersRouter = require('./backend/routes/users');
-
-
+// ✅ DB 연결
 connectDB();
-var app = express();
 
-
+// ✅ 미들웨어
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(cors({credentials: true, origin: serverUrl}));
 
+// ✅ CORS 설정 (로컬 + 배포 모두 허용)
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://www.surveymaker.app'
+];
 
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS 정책 위반"));
+    }
+  },
+  credentials: true,
+}));
+
+// ✅ API 라우트
 app.use('/api/surveys', surveysRouter);
 app.use('/users', usersRouter);
 
+// ✅ 프로덕션 배포용 정적 파일 제공
+if (process.env.NODE_ENV === 'production') {
+  console.log('📦 배포 모드: React build 사용 중');
+  app.use(express.static(path.join(__dirname, 'frontend/inventory-app/build')));
 
-
-if(process.env.NODE_ENV === 'production'){
-  console.log('started using build folder');
-  app.use(express.static(path.join(__dirname,'frontend/inventory-app/build')));
-
-  // Handle React routing, return all requests to React app
-  app.get('*', function(req, res) {
-    console.log('hit');
+  // React SPA 라우팅 대응
+  app.get('*', function (req, res) {
     res.sendFile(path.join(__dirname, 'frontend/inventory-app/build/index.html'));
   });
-
 }
 
-
-
-// error handler
-app.use(function(err, req, res, next) {
+// ✅ 에러 핸들러
+app.use(function (err, req, res, next) {
   const statusCode = res.statusCode ? res.statusCode : 500;
-
-  res.status(statusCode);
-
-  res.json({
-      message: err.message,
-      stack: process.env.NODE_ENV === 'production' ? null : err.stack
-  })
+  res.status(statusCode).json({
+    message: err.message,
+    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+  });
 });
 
+// ✅ 서버 시작
+app.listen(port, () => console.log(`🚀 서버 실행 중: http://localhost:${port}`));
 
-
-app.listen(port, () => console.log('CORS-enabled web server started on port ' + port));
-
-module.exports = {app};
+module.exports = { app };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "../hooks/AuthContext";
 import { Header } from '../components/header/header';
 import { Footer } from '../components/footer/footer';
 import { CreateSurvey } from '../components/createSurvey/createSurvey';
@@ -7,7 +7,7 @@ import { DisplaySurvey } from '../components/createSurvey/displaySurvey';
 import { DisplaySurveyList } from '../components/createSurvey/displaySurveyList';
 
 function Dashboard() {
-    const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
+    const { user, token } = useAuth();
 
     const [userData, setUserData] = useState({
         _id: '',
@@ -20,10 +20,10 @@ function Dashboard() {
 
     const serverUrl = 'http://localhost:5000';
 
-    // 로그인 후 사용자 정보를 서버에 등록하거나 불러오는 함수
-    const loginOrCreateUser = useCallback(async (user) => {
+    const loginOrCreateUser = useCallback(async () => {
+        if (!user || !user._id || !token) return; // ✅ null 가드
+
         try {
-            const token = await getAccessTokenSilently();
             const response = await fetch(`${serverUrl}/users/login`, {
                 method: "POST",
                 headers: {
@@ -33,37 +33,33 @@ function Dashboard() {
                 body: JSON.stringify({
                     name: user.name,
                     email: user.email,
-                    _id: user.sub
+                    _id: user._id
                 })
             });
 
-            const responseData = await response.json();
-            setUserData(responseData);
-            console.log("✅ 유저 데이터:", responseData);
+            const data = await response.json();
+            setUserData(data);
+            console.log("✅ 유저 데이터:", data);
         } catch (error) {
             console.error("❌ 사용자 등록 또는 로그인 실패:", error);
         }
-    }, [getAccessTokenSilently]);
+    }, [user, token]);
 
-    // 로그인 후 첫 렌더링 시 사용자 등록 시도
     useEffect(() => {
-        if (counter === 0 && isAuthenticated) {
-            loginOrCreateUser(user);
+        if (counter === 0 && user && token) {
+            loginOrCreateUser();
             setCounter(1);
         }
-    }, [user, isAuthenticated, loginOrCreateUser, counter]);
+    }, [user, token, loginOrCreateUser, counter]);
 
-    // 각 화면 뷰 전환 처리
     const switchView = (newView) => {
         setView(newView);
     };
 
-    // 설문 ID 전달 함수
     const sendSurveyId = (id) => {
         setCurrentSurveyId(id);
     };
 
-    // 현재 상태(view)에 따라 렌더링되는 컴포넌트 결정
     const renderSwitch = (param) => {
         switch (param) {
             case 'createSurvey':
@@ -87,6 +83,7 @@ function Dashboard() {
                     <DisplaySurveyList
                         id={userData._id}
                         switchView={switchView}
+                        sendSurveyId={sendSurveyId}
                     />
                 );
             default:
@@ -95,7 +92,7 @@ function Dashboard() {
     };
 
     return (
-        isAuthenticated && (
+        user && token && (
             <>
                 <Header name={userData.name} id={userData._id} />
                 {renderSwitch(view)}

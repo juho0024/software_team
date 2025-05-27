@@ -1,30 +1,30 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
 import { Table, Container, Col, Row, Button, Spinner } from "react-bootstrap";
 import { serverUrl } from "../../variables/constants.js";
-import { withAuthenticationRequired } from "@auth0/auth0-react";
+import { useAuth } from "../../hooks/AuthContext";
 
-
-export function DisplaySurveyList({ sendSurveyId, loginOrCreateUser }) {
+export function DisplaySurveyList({ sendSurveyId }) {
     const [surveyList, setSurveyList] = useState(null);
     const [tableItems, setTableItems] = useState(
         <tr>
-            <td>
+            <td colSpan={3}>
                 <div style={{ textAlign: "center", padding: 20 }}>
                     <Spinner animation="border" />
                 </div>
             </td>
         </tr>
     );
-    const { getAccessTokenSilently, user, isAuthenticated } = useAuth0();
+
+    const { user, token } = useAuth();
     const navigate = useNavigate();
 
     const fetchSurveyList = useCallback(async () => {
+        if (!user || !user._id || !token) return; // ✅ null 체크
+
         try {
-            const token = await getAccessTokenSilently();
             const res = await fetch(
-                `${serverUrl}/api/surveys/surveys-by-user/${user.sub}`,
+                `${serverUrl}/api/surveys/surveys-by-user/${user._id}`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -42,24 +42,18 @@ export function DisplaySurveyList({ sendSurveyId, loginOrCreateUser }) {
         } catch (err) {
             console.error("❌ 설문 목록 가져오기 실패:", err);
         }
-    }, [getAccessTokenSilently, user]);
+    }, [token, user]);
 
     useEffect(() => {
-        if (isAuthenticated && user) {
-            loginOrCreateUser(user); // 유저 로그인 또는 생성 호출
-            fetchSurveyList();
-        }
-    }, [isAuthenticated, user, loginOrCreateUser, fetchSurveyList]);
+        fetchSurveyList();
+    }, [fetchSurveyList]);
 
     useEffect(() => {
-        if (surveyList) {
+        if (surveyList && Array.isArray(surveyList)) {
             const items = surveyList.map((survey, idx) => (
                 <tr key={idx}>
                     <td>
-                        <Link
-                            to={`/create-survey/${survey._id}`}
-                            style={{ textDecoration: "none" }}
-                        >
+                        <Link to={`/create-survey/${survey._id}`} style={{ textDecoration: "none" }}>
                             {survey.title}
                         </Link>
                     </td>
@@ -73,10 +67,7 @@ export function DisplaySurveyList({ sendSurveyId, loginOrCreateUser }) {
                         </Link>
                     </td>
                     <td>
-                        <Link
-                            to={`/display-results/${survey._id}`}
-                            style={{ textDecoration: "none" }}
-                        >
+                        <Link to={`/display-results/${survey._id}`} style={{ textDecoration: "none" }}>
                             결과 보기 ({survey.responseTotal})
                         </Link>
                     </td>
@@ -135,7 +126,3 @@ export function DisplaySurveyList({ sendSurveyId, loginOrCreateUser }) {
         </main>
     );
 }
-
-export default withAuthenticationRequired(DisplaySurveyList, {
-    onRedirecting: () => <div>로딩 중...</div>,
-});

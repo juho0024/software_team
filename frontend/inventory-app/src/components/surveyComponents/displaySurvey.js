@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Spinner } from "react-bootstrap";
-import { useAuth0 } from "@auth0/auth0-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { serverUrl } from "../../variables/constants";
 import {
@@ -8,9 +7,9 @@ import {
   Paragraph,
   ShortResponse,
   MultipleChoice,
-  TrueFalse,
 } from "./displayQuestionComponents";
 import uniqid from "uniqid";
+import { useAuth } from "../../hooks/AuthContext";
 
 export function DisplaySurvey() {
   const [survey, setSurvey] = useState({});
@@ -18,13 +17,12 @@ export function DisplaySurvey() {
       <div className="text-center p-4"><Spinner animation="border" /></div>
   );
 
-  const { getAccessTokenSilently } = useAuth0();
+  const { token } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
 
   const callApi = useCallback(async () => {
     try {
-      const token = await getAccessTokenSilently();
       const res = await fetch(`${serverUrl}/api/surveys/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -34,15 +32,16 @@ export function DisplaySurvey() {
       });
       const data = await res.json();
 
-      // 각 질문에 response 객체 추가
-      const questions = data.questions.map(q => ({
-        ...q,
-        response: {
-          response: "",
-          time: "",
-          _id: uniqid("response-")
-        }
-      }));
+      const questions = Array.isArray(data.questions)
+          ? data.questions.map(q => ({
+            ...q,
+            response: {
+              response: "",
+              time: "",
+              _id: uniqid("response-")
+            }
+          }))
+          : [];
 
       setSurvey({
         ...data,
@@ -51,27 +50,30 @@ export function DisplaySurvey() {
     } catch (error) {
       console.error("설문 불러오기 실패:", error);
     }
-  }, [getAccessTokenSilently, id]);
+  }, [token, id]);
 
   useEffect(() => {
-    callApi();
-  }, [callApi]);
+    if (token) {
+      callApi();
+    }
+  }, [callApi, token]);
 
-  const handleChange = (e, responseId, responseType) => {
-    const updated = { ...survey };
-    const idx = updated.questions.findIndex(q => q.response._id === responseId);
-    updated.questions[idx].response = {
-      ...updated.questions[idx].response,
-      response: e.target.value,
-      time: new Date()
-    };
-    setSurvey(updated);
-  };
+  const handleChange = useCallback((e, responseId) => {
+    setSurvey(prev => {
+      const updated = { ...prev };
+      const idx = updated.questions.findIndex(q => q.response._id === responseId);
+      updated.questions[idx].response = {
+        ...updated.questions[idx].response,
+        response: e.target.value,
+        time: new Date()
+      };
+      return updated;
+    });
+  }, []);
 
   const submitSurvey = async (e) => {
     e.preventDefault();
     try {
-      const token = await getAccessTokenSilently();
       await fetch(`${serverUrl}/api/surveys/update-responses/${survey._id}`, {
         method: "PUT",
         headers: {
@@ -90,7 +92,7 @@ export function DisplaySurvey() {
   };
 
   useEffect(() => {
-    if (!survey.title) return;
+    if (!Array.isArray(survey.questions)) return;
 
     const form = survey.questions.map((q, idx) => {
       const props = {
@@ -102,7 +104,7 @@ export function DisplaySurvey() {
       };
       switch (q.type) {
         case "short response": return <ShortResponse {...props} />;
-        case "multiple choice": return <MultipleChoice {...props} />;
+        case "multiple choice":
         case "true/false": return <MultipleChoice {...props} />;
         case "paragraph": return <Paragraph {...props} />;
         default: return null;
@@ -110,7 +112,7 @@ export function DisplaySurvey() {
     });
 
     setRenderedForm(form);
-  }, [survey]);
+  }, [survey, handleChange]);
 
   return (
       <div className="displaySurvey">
