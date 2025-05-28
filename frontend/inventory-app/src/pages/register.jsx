@@ -23,7 +23,7 @@ function Register() {
     try {
       await apiFetch('/users/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password }), // ✅ name 포함
+        body: JSON.stringify({ name, email, password }),
       });
 
       setMsg('회원가입 성공! 로그인해주세요.');

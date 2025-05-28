@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -9,20 +9,20 @@ const userSchema = mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true, // ✅ 중복 방지
+      unique: true,
     },
     password: {
       type: String,
-      required: false, // ✅ 로그인 아닌 OAuth 계정도 대비
+      required: false,
       default: null,
     },
     surveys: {
-      type: [String],
+      type: [String], // ✅ 문자열 기반 설문 ID 배열
       default: [],
     },
   },
   {
-    timestamps: true, // ✅ createdAt, updatedAt 자동 추가
+    timestamps: true,
   }
 );
 
