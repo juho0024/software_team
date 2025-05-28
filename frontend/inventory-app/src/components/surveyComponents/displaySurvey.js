@@ -75,17 +75,22 @@ export function DisplaySurvey() {
   const submitSurvey = async (e) => {
     e.preventDefault();
     try {
-      await fetch(`${serverUrl}/api/surveys/update-responses/${survey._id}`, {
-        method: "PUT",
+      const formattedResponses = survey.questions.map(q => ({
+        _id: q._id,
+        response: q.response
+      }));
+
+      await fetch(`${serverUrl}/api/surveys/${id}/submit`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          _id: survey._id,
-          questions: survey.questions
+          questions: formattedResponses
         })
       });
+
       navigate(`/display-survey/submit-survey/${id}`);
     } catch (err) {
       console.error("응답 제출 실패:", err);

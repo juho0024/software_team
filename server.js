@@ -23,22 +23,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// ✅ CORS 설정 (로컬 + 배포 모두 허용)
+// ✅ CORS 설정 (origin이 없거나 허용된 origin이면 통과)
 const allowedOrigins = [
   'http://localhost:3000',
   'https://www.surveymaker.app'
 ];
 
+// ✅ 임시로 모든 origin 허용 (로컬 테스트 완벽 허용)
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS 정책 위반"));
-    }
-  },
+  origin: true,
   credentials: true,
 }));
+
 
 // ✅ API 라우트
 app.use('/api/surveys', surveysRouter);
