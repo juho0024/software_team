@@ -27,15 +27,15 @@ export function Header() {
             <Navbar.Collapse id="nav">
               {user && (
                   <Nav className="me-auto">
-                    <Nav.Link href="/dashboard">대시보드</Nav.Link>
-                    <Nav.Link href="/create-survey">설문 만들기</Nav.Link>
+                    <Nav.Link href="/dashboard">대시보드 화면</Nav.Link>
+                    <Nav.Link href="/create-survey">설문 작성하기</Nav.Link>
                   </Nav>
               )}
               <Nav className="ms-auto">
                 {user ? (
                     <>
                       <Navbar.Text className="me-3">
-                        {user.email} 님 환영합니다
+                        {user.email} 님 환영합니다!
                       </Navbar.Text>
                       <button
                           className="btn btn-outline-light"
