@@ -1,4 +1,6 @@
+// EditSurvey.js
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { Button, Form } from 'react-bootstrap';
 import uniqid from 'uniqid';
 import {
@@ -8,10 +10,9 @@ import {
     TrueFalse,
     SurveyTitle
 } from './createQuestionComponents';
-import { useAuth } from '../../hooks/AuthContext'; // ✅ JWT 기반 인증 사용
 
 export function EditSurvey(props) {
-    const { token } = useAuth();
+    const { getAccessTokenSilently } = useAuth0();
     const [survey, setSurvey] = useState({
         _id: '',
         title: '',
@@ -89,6 +90,7 @@ export function EditSurvey(props) {
     const callApi = useCallback(async (url, fetchOptions) => {
         const serverUrl = 'http://localhost:5000';
         try {
+            const token = await getAccessTokenSilently();
             const response = await fetch(`${serverUrl}${url}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -98,14 +100,14 @@ export function EditSurvey(props) {
             });
             return await response.json();
         } catch (error) {
-            console.error("❌ API 호출 실패:", error);
+            console.error(error);
         }
-    }, [token]);
+    }, [getAccessTokenSilently]);
 
     const onSubmitSurvey = async (e) => {
         e.preventDefault();
 
-        await callApi('/api/surveys/create-update', {
+        await callApi('/api/surveys/create', {
             method: 'POST',
             body: JSON.stringify({
                 ...survey,
@@ -147,19 +149,19 @@ export function EditSurvey(props) {
                 {questionForms}
                 {showAddQuestionBtn ? (
                     <div>
-                        {questions.length > 0 && <Button style={{ margin: 10 }} variant="success" onClick={() => setShowAddQuestionBtn(false)}>질문 추가</Button>}
-                        {questions.length > 0 && <Button variant="info" onClick={onSubmitSurvey}>저장하고 설문 완료</Button>}
-                        {questions.length === 0 && <Button variant="info" onClick={() => setShowAddQuestionBtn(false)}>질문 추가</Button>}
+                        {questions.length > 0 && <Button style={{ margin: 10 }} variant="success" onClick={() => setShowAddQuestionBtn(false)}>Add Question</Button>}
+                        {questions.length > 0 && <Button variant="info" onClick={onSubmitSurvey}>Save and Finish Survey</Button>}
+                        {questions.length === 0 && <Button variant="info" onClick={() => setShowAddQuestionBtn(false)}>Add Question</Button>}
                     </div>
                 ) : (
                     <>
-                        <h4>질문 유형 선택</h4>
+                        <h4>Choose a Question Type</h4>
                         <Form.Select aria-label="Select Question Type" onChange={addQuestion}>
                             <option></option>
-                            <option value="1">단답형</option>
-                            <option value="2">객관식</option>
-                            <option value="3">O/X</option>
-                            <option value="4">장문형</option>
+                            <option value="1">Short Response</option>
+                            <option value="2">Multiple Choice</option>
+                            <option value="3">True/False</option>
+                            <option value="4">Paragraph Response</option>
                         </Form.Select>
                     </>
                 )}
