@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Spinner } from "react-bootstrap";
+import { useAuth0 } from "@auth0/auth0-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { serverUrl } from "../../variables/constants";
 import {
@@ -7,10 +8,9 @@ import {
   Paragraph,
   ShortResponse,
   MultipleChoice,
+  TrueFalse,
 } from "./displayQuestionComponents";
-
 import uniqid from "uniqid";
-import { useAuth } from "../../hooks/AuthContext";
 
 export function DisplaySurvey() {
   const [survey, setSurvey] = useState({});
@@ -18,12 +18,13 @@ export function DisplaySurvey() {
       <div className="text-center p-4"><Spinner animation="border" /></div>
   );
 
-  const { token, user } = useAuth(); // ✅ user 포함
+  const { getAccessTokenSilently } = useAuth0();
   const { id } = useParams();
   const navigate = useNavigate();
 
   const callApi = useCallback(async () => {
     try {
+      const token = await getAccessTokenSilently();
       const res = await fetch(`${serverUrl}/api/surveys/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -33,16 +34,15 @@ export function DisplaySurvey() {
       });
       const data = await res.json();
 
-      const questions = Array.isArray(data.questions)
-          ? data.questions.map(q => ({
-            ...q,
-            response: {
-              response: "",
-              time: "",
-              _id: uniqid("response-")
-            }
-          }))
-          : [];
+      // 각 질문에 response 객체 추가
+      const questions = data.questions.map(q => ({
+        ...q,
+        response: {
+          response: "",
+          time: "",
+          _id: uniqid("response-")
+        }
+      }));
 
       setSurvey({
         ...data,
@@ -51,49 +51,38 @@ export function DisplaySurvey() {
     } catch (error) {
       console.error("설문 불러오기 실패:", error);
     }
-  }, [token, id]);
+  }, [getAccessTokenSilently, id]);
 
   useEffect(() => {
-    if (token) {
-      callApi();
-    }
-  }, [callApi, token]);
+    callApi();
+  }, [callApi]);
 
-  const handleChange = useCallback((e, responseId) => {
-    setSurvey(prev => {
-      const updated = { ...prev };
-      const idx = updated.questions.findIndex(q => q.response._id === responseId);
-      updated.questions[idx].response = {
-        ...updated.questions[idx].response,
-        response: e.target.value,
-        time: new Date()
-      };
-      return updated;
-    });
-  }, []);
+  const handleChange = (e, responseId, responseType) => {
+    const updated = { ...survey };
+    const idx = updated.questions.findIndex(q => q.response._id === responseId);
+    updated.questions[idx].response = {
+      ...updated.questions[idx].response,
+      response: e.target.value,
+      time: new Date()
+    };
+    setSurvey(updated);
+  };
 
   const submitSurvey = async (e) => {
     e.preventDefault();
     try {
-      const formattedResponses = survey.questions.map(q => ({
-        _id: q._id,
-        response: {
-          ...q.response,
-          user_id: user?._id  // ✅ user_id 포함
-        }
-      }));
-
-      await fetch(`${serverUrl}/api/surveys/${id}/submit`, {
-        method: "POST",
+      const token = await getAccessTokenSilently();
+      await fetch(`${serverUrl}/api/surveys/update-responses/${survey._id}`, {
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          questions: formattedResponses
+          _id: survey._id,
+          questions: survey.questions
         })
       });
-
       navigate(`/display-survey/submit-survey/${id}`);
     } catch (err) {
       console.error("응답 제출 실패:", err);
@@ -101,7 +90,7 @@ export function DisplaySurvey() {
   };
 
   useEffect(() => {
-    if (!Array.isArray(survey.questions)) return;
+    if (!survey.title) return;
 
     const form = survey.questions.map((q, idx) => {
       const props = {
@@ -113,7 +102,7 @@ export function DisplaySurvey() {
       };
       switch (q.type) {
         case "short response": return <ShortResponse {...props} />;
-        case "multiple choice":
+        case "multiple choice": return <MultipleChoice {...props} />;
         case "true/false": return <MultipleChoice {...props} />;
         case "paragraph": return <Paragraph {...props} />;
         default: return null;
@@ -121,7 +110,7 @@ export function DisplaySurvey() {
     });
 
     setRenderedForm(form);
-  }, [survey, handleChange]);
+  }, [survey]);
 
   return (
       <div className="displaySurvey">

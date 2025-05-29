@@ -1,29 +1,10 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
-const userSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    password: {
-      type: String,
-      required: false,
-      default: null,
-    },
-    surveys: {
-      type: [String], // ✅ 문자열 기반 설문 ID 배열
-      default: [],
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+const userSchema = mongoose.Schema({
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    password: { type: String, required: false }, // 🔐 register용 비밀번호 필드 추가
+    surveys: { type: [String], default: [] }      // 설문 ID 리스트
+});
 
 module.exports = mongoose.model('User', userSchema);

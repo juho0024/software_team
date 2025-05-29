@@ -1,18 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Navbar, Nav, Container } from "react-bootstrap";
-import { useAuth } from "../../hooks/AuthContext";
+import { Person } from "react-bootstrap-icons";
+import { useAuth0 } from "@auth0/auth0-react";
+import { logoutUrl } from "../../variables/constants";
 import logo from "../../images/gclogo.png";
-import { useNavigate } from "react-router-dom";
 
 export function Header() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { loginWithRedirect, logout, user, isAuthenticated } = useAuth0();
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    if (!userData && user) {
+      setUserData({ name: user.name, _id: user.sub });
+    }
+
+    // ✅ 로그인 사용자 정보 콘솔 출력
+    console.log("🔍 현재 로그인 상태:");
+    console.log("isAuthenticated:", isAuthenticated);
+    console.log("user:", user);
+  }, [user, isAuthenticated]);
 
   return (
       <header>
         <Navbar bg="primary" variant="dark" expand="lg">
           <Container>
-            <Navbar.Brand href={user ? "/dashboard" : "/"}>
+            <Navbar.Brand href={isAuthenticated ? "/dashboard" : "/"}>
               <img
                   alt="logo"
                   src={logo}
@@ -27,38 +39,27 @@ export function Header() {
             <Navbar.Collapse id="nav">
               {user && (
                   <Nav className="me-auto">
-                    <Nav.Link href="/dashboard">대시보드 화면</Nav.Link>
-                    <Nav.Link href="/create-survey">설문 작성하기</Nav.Link>
+                    <Nav.Link href="/dashboard">대시보드</Nav.Link>
+                    <Nav.Link href="/create-survey">설문 만들기</Nav.Link>
                   </Nav>
               )}
               <Nav className="ms-auto">
                 {user ? (
                     <>
                       <Navbar.Text className="me-3">
-                        {user.email} 님 환영합니다!
+                        {user.name} 님 환영합니다
                       </Navbar.Text>
                       <button
-                          className="btn btn-outline-light"
-                          onClick={logout}
+                          className="headerLink"
+                          onClick={() => logout({ returnTo: logoutUrl })}
                       >
                         로그아웃
                       </button>
                     </>
                 ) : (
-                    <>
-                      <button
-                          className="btn btn-outline-light me-2"
-                          onClick={() => navigate("/login")}
-                      >
-                        로그인
-                      </button>
-                      <button
-                          className="btn btn-light text-primary fw-bold"
-                          onClick={() => navigate("/register")}
-                      >
-                        회원가입
-                      </button>
-                    </>
+                    <button className="headerLink" onClick={loginWithRedirect}>
+                      <Person /> 로그인 또는 회원가입
+                    </button>
                 )}
               </Nav>
             </Navbar.Collapse>

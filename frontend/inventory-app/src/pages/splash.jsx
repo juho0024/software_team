@@ -1,30 +1,29 @@
 import React, { useEffect } from 'react';
 import { Container, Row, Col, Button } from "react-bootstrap";
 import { useNavigate } from 'react-router-dom';
+import { useAuth0 } from "@auth0/auth0-react";
 import surveyImg from '../images/surveyMakerImg.png';
 import surveyResultsImg from '../images/surveyMakerResultsImg.png';
-import { useAuth } from '../hooks/AuthContext'; // ✅ JWT 기반 AuthContext 사용
 
 export function Splash() {
-  const { user } = useAuth();
+  const { loginWithRedirect, isAuthenticated } = useAuth0();
   const navigate = useNavigate();
 
+  // ✅ 렌더링 후에만 이동하도록 useEffect 사용
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');  // 로그인 상태면 대시보드로 이동
+    if (isAuthenticated) {
+      navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [isAuthenticated, navigate]);
 
   return (
       <main className='main' style={{ backgroundColor: 'aliceblue' }}>
         <Container fluid>
           <Row>
             <Col xs={12} md={6} lg={6} style={{ paddingTop: 80, paddingBottom: 50, textAlign: 'right', paddingRight: 40 }}>
-              <h2 style={{ fontWeight: 500 }}></h2><br />
+              <h2 style={{ fontWeight: 500 }}>고객 인사이트 확보! 매출 향상!</h2><br />
               <h4>설문을 만들어 고객 인사이트를 확보하고 매출로 연결하세요.</h4><br />
-              <Button onClick={() => navigate('/login')} variant="success" style={{ fontSize: 20 }}>
-                지금 시작하기
-              </Button>
+              <Button onClick={() => loginWithRedirect()} variant="success" style={{ fontSize: 20 }}>지금 시작하기</Button>
             </Col>
             <Col xs={12} md={6} lg={6} style={{ paddingTop: 40, paddingBottom: 50 }}>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
