@@ -1,166 +1,109 @@
 import "./bootstrap.min.css";
 import "./index.css";
-import { useEffect, useState, useCallback } from "react";
-import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
+import { useState } from "react";
 import Header from "./components/header/header";
 import { Footer } from "./components/footer/footer";
 import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Outlet,
-  useLocation,
-  useNavigate
+    BrowserRouter as Router,
+    Routes,
+    Route,
+    Outlet,
+    Navigate,
+    useLocation
 } from "react-router-dom";
 import { CreateSurvey } from "./components/surveyComponents/createSurvey";
 import { DisplaySurvey } from "./components/surveyComponents/displaySurvey";
 import { DisplaySurveyList } from "./components/surveyComponents/displaySurveyList";
-import { SurveySubmit } from "./components/surveyComponents/surveySubmit";
+import SurveySubmit from './components/surveyComponents/surveySubmit';
 import { Splash } from "./pages/splash";
 import { DisplayResults } from './components/surveyComponents/displayResults';
 import { NotFound } from './pages/notfound';
-import {serverUrl} from "./variables/constants.js";
-
+import Register from './pages/register';
+import LoginForm from './pages/LoginForm';
+import { useAuth } from "./hooks/AuthContext";
 
 function BasicLayout() {
-  return (
-    <>
-      <Header />
-      
-        <Outlet />
-     
-      
-
-      <Footer />
-    </>
-  );
+    return (
+        <>
+            <Header />
+            <Outlet />
+            <Footer />
+        </>
+    );
 }
 
 function DisplaySurveyLayout() {
-  return (
-      <>
-        <Header />
-        <Outlet />
-        <Footer />
-      </>
-  );
+    return (
+        <>
+            <Header />
+            <Outlet />
+            <Footer />
+        </>
+    );
 }
 
 function App() {
-  const { isAuthenticated, getAccessTokenSilently, isLoading, login } =
-    useAuth0();
-  const [userData, setUserData] = useState(null);
-  const [currentSurveyId, setCurrentSurveyId] = useState(null);
-  const [error, setError] = useState(false);
+    const { user } = useAuth();
+    const [currentSurveyId, setCurrentSurveyId] = useState(null);
 
-  const loginOrCreateUser = useCallback(async (user) => {
-    try {
-      const token = await getAccessTokenSilently();
-      const response = await fetch(`${serverUrl}/users/login`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({
-          name: user.name,
-          email: user.email,
-          _id: user.sub,
-        }),
-      });
+    const sendSurveyId = (id) => {
+        setCurrentSurveyId(id);
+    };
 
-      const responseData = await response.json();
+    return (
+        <Routes>
+            <Route path="/" element={<BasicLayout />}>
+                <Route index element={<Splash />} />
+                <Route
+                    path="dashboard"
+                    element={<DisplaySurveyList sendSurveyId={sendSurveyId} />}
+                />
+                <Route
+                    path="create-survey/*"
+                    element={
+                        <PrivateRoute>
+                            <CreateSurvey surveyId={currentSurveyId} sendSurveyId={sendSurveyId} />
+                        </PrivateRoute>
+                    }
+                />
+                <Route
+                    path="create-survey/:id/*"
+                    element={
+                        <PrivateRoute>
+                            <CreateSurvey surveyId={currentSurveyId} sendSurveyId={sendSurveyId} />
+                        </PrivateRoute>
+                    }
+                />
+                <Route
+                    path="display-results/:id/*"
+                    element={
+                        <PrivateRoute>
+                            <DisplayResults />
+                        </PrivateRoute>
+                    }
+                />
+                <Route path="*" element={<NotFound />} />
+            </Route>
 
-      setUserData(responseData);
-      console.log(userData);
-    } catch (error) {
-      console.log(error);
-      setError({ error: error.error });
-    }
-  });
+            <Route path="/display-survey" element={<DisplaySurveyLayout />}>
+                <Route
+                    path=":id"
+                    element={<DisplaySurvey surveyId={currentSurveyId} sendSurveyId={sendSurveyId} />}
+                />
+                <Route path="submit-survey/:id" element={<SurveySubmit />} />
+            </Route>
 
-  const sendSurveyId = (id) => {
-    setCurrentSurveyId(id);
-  };
-
-  return (
-    <>
-      <Routes>
-        <Route path="/" element={<BasicLayout />} >
-          <Route index element={<Splash />} />
-          <Route
-          path="dashboard"
-          element={
-            
-           <DisplaySurveyList
-              id={userData !== null && userData._id}
-              loginOrCreateUser={loginOrCreateUser}
-              sendSurveyId={sendSurveyId} />
-            
-            
-          }
-        />
-          <Route
-          path="create-survey/*"
-          element={
-            <PrivateView
-            component={CreateSurvey}
-              id={userData !== null && userData._id}
-              surveyId={currentSurveyId}
-              sendSurveyId={sendSurveyId}
-            />
-            
-          }
-        />
-          <Route
-          path="create-survey/:id/*"
-          element={
-            <PrivateView
-            component={CreateSurvey}
-              id={userData !== null && userData._id}
-              surveyId={currentSurveyId}
-              sendSurveyId={sendSurveyId}
-            />
-          }
-        />
-        <Route
-          path="display-results/:id/*"
-          element={
-            <PrivateView
-            component={DisplayResults} />
-           
-          }
-        />
-         <Route path="*" element={<NotFound />} />
-        </Route>
-    <Route path="/display-survey" element={<DisplaySurveyLayout />} >
-        <Route
-          path=":id"
-          element={
-            <DisplaySurvey
-              id={userData !== null && userData._id}
-              surveyId={currentSurveyId}
-              sendSurveyId={sendSurveyId}
-            />
-          }
-        />
-
-        <Route path="submit-survey/:id" element={<SurveySubmit />} />
-        </Route>
-      </Routes>
-    </>
-  );
+            <Route path="/login" element={<LoginForm />} />
+            <Route path="/register" element={<Register />} />
+        </Routes>
+    );
 }
 
-
-function PrivateView({ component, ...propsForComponent }) {
-  const { isAuthenticated, loginWithRedirect} = useAuth0();
-  let location = useLocation();
-  let navigate = useNavigate();
-
-  const Navigate = withAuthenticationRequired(component);
-
-  return <Navigate {...propsForComponent} />;
+// ✅ 보호 라우트 처리
+function PrivateRoute({ children }) {
+    const { user } = useAuth();
+    const location = useLocation();
+    return user ? children : <Navigate to="/login" state={{ from: location }} replace />;
 }
 
 export default App;

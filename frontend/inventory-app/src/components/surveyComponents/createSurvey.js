@@ -1,212 +1,192 @@
-import React from "react";
-import { Button, Form } from "react-bootstrap";
-import { useState, useEffect, useCallback } from "react";
-import uniqid from "uniqid";
-import {
-  MultipleChoice,
-  Paragraph,
-  ShortResponse,
-  TrueFalse,
-  SurveyTitle,
-} from "./createQuestionComponents";
-import { AlertDismissible } from './alert';
-import { useAuth0 } from "@auth0/auth0-react";
-import { useNavigate, useParams } from "react-router-dom";
-import { serverUrl } from "../../variables/constants.js";
+import React, { useState } from 'react';
+import { Button, Form } from 'react-bootstrap';
+import { useAuth } from '../../hooks/AuthContext';
+import uniqid from 'uniqid';
+import axios from 'axios';
 
-export function CreateSurvey(props) {
-  const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
-  const [survey, setSurvey] = useState({
-    title: "",
-    description: "",
-    questions: [],
-    user_id: "",
-  });
-  const [questionType, setQuestionType] = useState(1);
-  const [showAddQuestionBtn, setShowAddQuestionBtn] = useState(true);
+export const CreateSurvey = () => {
+  const { user, token } = useAuth();
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([]);
-  const [editingPreviousSurvey, setEditingPreviousSurvey] = useState(false);
-  let navigate = useNavigate();
-  let { id } = useParams();
+  const [message, setMessage] = useState('');
 
-  const callApiToGetSurvey = useCallback(async (url, fetchOptions) => {
-    try {
-      const token = await getAccessTokenSilently();
-      const response = await fetch(`${serverUrl}${url}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        ...fetchOptions
-      });
-      const responseData = await response.json();
-      let questions = [];
-      responseData.questions.forEach((question) => {
-        questions.push({
-          _id: question._id,
-          type: question.type,
-          question: question.question,
-          answer_choices: question.answer_choices,
-        });
-      });
-      setSurvey({
-        _id: responseData._id,
-        questions: [],
-        title: responseData.title,
-        description: responseData.description,
-        user_id: responseData.user_id,
-      });
-      setQuestions(questions);
-    } catch (error) {
-      console.log(error.error);
-    }
-  }, [getAccessTokenSilently]);
-
-  const startSurvey = () => {
-    if(id){
-      callApiToGetSurvey(`/api/surveys/${id}`, {method: "GET"});
-      setEditingPreviousSurvey(true);
-    } else {
-      setSurvey({ ...survey, _id: uniqid("survey-"), user_id: user.sub });
-    }
+  const handleAddQuestion = () => {
+    setQuestions([
+      ...questions,
+      {
+        _id: uniqid('question-'),
+        question: '',
+        type: 'short response',
+        answer_choices: [],
+      },
+    ]);
   };
 
-  useEffect(() => {
-    if(user && isAuthenticated){
-      setSurvey({ ...survey, user_id: user.sub });
+  const handleQuestionChange = (index, field, value) => {
+    const updated = [...questions];
+    updated[index][field] = value;
+
+    // 객관식일 경우 기본적으로 2개 항목
+    if (field === 'type' && value === 'multiple choice') {
+      updated[index].answer_choices = ['', ''];
+    } else if (field === 'type' && value === 'true/false') {
+      updated[index].answer_choices = ['True', 'False'];
+    } else if (field === 'type') {
+      updated[index].answer_choices = [];
     }
-  }, [user]);
 
-  const handleSurveyChange = (e) => {
-    setSurvey({ ...survey, [e.target.name]: e.target.value });
+    setQuestions(updated);
   };
 
-  const handleQuestionChange = (e) => {
-    const index = questions.findIndex(q => q._id === e.target.id);
-    const updatedQuestions = [...questions];
-    if (e.target.getAttribute("answer") === "yes") {
-      updatedQuestions[index].answer_choices[e.target.getAttribute("answernum")] = e.target.value;
-    } else {
-      updatedQuestions[index].question = e.target.value;
-    }
-    setQuestions(updatedQuestions);
+  const handleAnswerChange = (qIndex, aIndex, value) => {
+    const updated = [...questions];
+    updated[qIndex].answer_choices[aIndex] = value;
+    setQuestions(updated);
   };
 
-  const addMoreAnswerChoices = (e, id) => {
-    const index = questions.findIndex(q => q._id === id);
-    const updatedQuestions = [...questions];
-    updatedQuestions[index].answer_choices.push("");
-    setQuestions(updatedQuestions);
+  const addAnswerChoice = (qIndex) => {
+    const updated = [...questions];
+    updated[qIndex].answer_choices.push('');
+    setQuestions(updated);
   };
 
-  const addQuestion = (e) => {
-    setShowAddQuestionBtn(true);
-    const qType = e.target.value;
-    const newQ = {
-      type: "",
-      question: "",
-      answer_choices: [],
-      _id: uniqid("question-"),
-      responses: [],
-    };
-    switch (qType) {
-      case "1": newQ.type = "short response"; break;
-      case "2": newQ.type = "multiple choice"; newQ.answer_choices = ["", ""]; break;
-      case "3": newQ.type = "true/false"; newQ.answer_choices = ["True", "False"]; break;
-      case "4": newQ.type = "paragraph"; break;
-      default: return;
-    }
-    setQuestions([...questions, newQ]);
-  };
-
-  const deleteQuestion = (e, id) => {
-    setQuestions(questions.filter(q => q._id !== id));
-  };
-
-  const callApi = useCallback(async (url, fetchOptions) => {
-    try {
-      const token = await getAccessTokenSilently();
-      const response = await fetch(`${serverUrl}${url}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        ...fetchOptions,
-      });
-      return await response.json();
-    } catch (error) {
-      console.log(error.error);
-    }
-  }, [getAccessTokenSilently]);
-
-  const onSubmitSurvey = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    callApi("/api/surveys/create-update", {
-      method: "POST",
-      body: JSON.stringify({
-        questions,
-        title: survey.title,
-        description: survey.description,
-        user_id: survey.user_id,
-        creationTime: new Date(),
-        survey_id: survey._id,
-      }),
-    });
-    props.sendSurveyId(survey._id);
-    window.open(`/display-survey/${survey._id}`, '_blank');
-  };
+    setMessage('');
 
-  const makeSurvey = () => {
-    const questionForms = questions.map((q, i) => {
-      const props = {
-        key: q._id,
-        question: q,
-        onChange: handleQuestionChange,
-        deleteQuestion,
-        index: i,
-      };
-      switch (q.type) {
-        case "short response": return <ShortResponse {...props} />;
-        case "multiple choice": return <MultipleChoice {...props} addAnswerChoice={addMoreAnswerChoices} />;
-        case "true/false": return <TrueFalse {...props} addAnswerChoice={addMoreAnswerChoices} />;
-        case "paragraph": return <Paragraph {...props} />;
-        default: return null;
+    if (!user || !user._id) {
+      setMessage('로그인이 필요합니다.');
+      return;
+    }
+
+    try {
+      const res = await axios.post(
+          'http://localhost:5000/api/surveys/create-update',
+          {
+            title,
+            description,
+            questions,
+            user_id: user._id,
+            survey_id: uniqid('survey-'),
+            creationTime: new Date(),
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+      );
+
+      if (res.data?.success) {
+        setMessage('✅ 설문 생성 완료');
+        setTitle('');
+        setDescription('');
+        setQuestions([]);
+      } else {
+        setMessage('❌ 설문 생성 실패');
       }
-    });
-
-    return (
-        <div style={{ maxWidth: "50%", margin: "auto", paddingTop: 20 }}>
-          <SurveyTitle onChange={handleSurveyChange} survey={survey} />
-          {questionForms}
-          {showAddQuestionBtn ? (
-              questions.length >= 1 ? (
-                  <div>
-                    {editingPreviousSurvey && <AlertDismissible />}
-                    <Button style={{ margin: 10 }} variant="success" onClick={() => setShowAddQuestionBtn(false)}>질문 추가</Button>
-                    <Button variant="info" onClick={onSubmitSurvey}>저장하고 설문 완료</Button>
-                  </div>
-              ) : (
-                  <Button variant="info" onClick={() => setShowAddQuestionBtn(false)}>질문 추가</Button>
-              )
-          ) : (
-              <>
-                <h4>질문 유형 선택</h4>
-                <Form.Select size="small" aria-label="Select Question Type" onChange={addQuestion}>
-                  <option></option>
-                  <option value="1">단답형</option>
-                  <option value="2">객관식</option>
-                  <option value="3">O/X</option>
-                  <option value="4">장문형</option>
-                </Form.Select>
-              </>
-          )}
-        </div>
-    );
+    } catch (err) {
+      console.error(err);
+      setMessage('❌ 서버 오류로 설문을 생성할 수 없습니다.');
+    }
   };
 
-  useEffect(() => {
-    startSurvey();
-  }, []);
+  return (
+      <div className="container mt-4" style={{ maxWidth: '700px' }}>
+        <h2>설문 만들기</h2>
+        {message && <div className="alert alert-info">{message}</div>}
 
-  return <main className="main" style={{ marginBottom: 20 }}>{makeSurvey()}</main>;
-}
+        <Form onSubmit={handleSubmit}>
+          <Form.Group className="mb-3">
+            <Form.Label>설문 제목</Form.Label>
+            <Form.Control
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label>설문 설명</Form.Label>
+            <Form.Control
+                as="textarea"
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+            />
+          </Form.Group>
+
+          <h5>질문 목록</h5>
+          {questions.map((q, index) => (
+              <div key={q._id} className="mb-4 border p-3 rounded">
+                <Form.Group className="mb-2">
+                  <Form.Label>질문 {index + 1}</Form.Label>
+                  <Form.Control
+                      type="text"
+                      placeholder="질문 입력"
+                      value={q.question}
+                      onChange={(e) =>
+                          handleQuestionChange(index, 'question', e.target.value)
+                      }
+                      required
+                  />
+                </Form.Group>
+
+                <Form.Select
+                    value={q.type}
+                    onChange={(e) =>
+                        handleQuestionChange(index, 'type', e.target.value)
+                    }
+                    className="mb-2"
+                >
+                  <option value="short response">단답형</option>
+                  <option value="paragraph">장문형</option>
+                  <option value="multiple choice">객관식</option>
+                  <option value="true/false">O/X</option>
+                </Form.Select>
+
+                {q.type === 'multiple choice' &&
+                    q.answer_choices.map((ans, aIndex) => (
+                        <Form.Control
+                            key={aIndex}
+                            className="mb-1"
+                            type="text"
+                            placeholder={`선택지 ${aIndex + 1}`}
+                            value={ans}
+                            onChange={(e) =>
+                                handleAnswerChange(index, aIndex, e.target.value)
+                            }
+                        />
+                    ))}
+
+                {q.type === 'multiple choice' && (
+                    <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        onClick={() => addAnswerChoice(index)}
+                    >
+                      선택지 추가
+                    </Button>
+                )}
+              </div>
+          ))}
+
+          <Button
+              type="button"
+              variant="secondary"
+              className="me-2"
+              onClick={handleAddQuestion}
+          >
+            질문 추가
+          </Button>
+
+          <Button type="submit" variant="primary">
+            설문 생성
+          </Button>
+        </Form>
+      </div>
+  );
+};

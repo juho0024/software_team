@@ -4,7 +4,7 @@ const router = express.Router();
 const {
   getUser,
   registerUser,
-  loginOrCreateUser,
+  loginUser, // ✅ 기존 loginOrCreateUser → loginUser로 수정
   updateUserSurveys,
   deleteUser
 } = require('../controllers/userController');
@@ -22,8 +22,8 @@ router.get('/getUser', protect, getUser);
 // ✅ 회원가입
 router.post('/register', registerUser);
 
-// ✅ 로그인 또는 자동 생성 (기존 로직 유지)
-router.post('/login', loginOrCreateUser);
+// ✅ 로그인
+router.post('/login', loginUser); // ✅ 여기도 수정됨
 
 // ✅ 사용자 설문 업데이트 (보호됨)
 router.put('/updateSurveys/:id', protect, updateUserSurveys);
