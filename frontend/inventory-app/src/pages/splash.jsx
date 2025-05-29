@@ -20,7 +20,7 @@ export function Splash() {
         <Container fluid>
           <Row>
             <Col xs={12} md={6} lg={6} style={{ paddingTop: 80, paddingBottom: 50, textAlign: 'right', paddingRight: 40 }}>
-              <h2 style={{ fontWeight: 500 }}>고객 인사이트 확보! 매출 향상!</h2><br />
+              <h2 style={{ fontWeight: 500 }}></h2><br />
               <h4>설문을 만들어 고객 인사이트를 확보하고 매출로 연결하세요.</h4><br />
               <Button onClick={() => navigate('/login')} variant="success" style={{ fontSize: 20 }}>
                 지금 시작하기

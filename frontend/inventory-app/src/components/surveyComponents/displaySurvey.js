@@ -18,7 +18,7 @@ export function DisplaySurvey() {
       <div className="text-center p-4"><Spinner animation="border" /></div>
   );
 
-  const { token } = useAuth();
+  const { token, user } = useAuth(); // ✅ user 포함
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -77,7 +77,10 @@ export function DisplaySurvey() {
     try {
       const formattedResponses = survey.questions.map(q => ({
         _id: q._id,
-        response: q.response
+        response: {
+          ...q.response,
+          user_id: user?._id  // ✅ user_id 포함
+        }
       }));
 
       await fetch(`${serverUrl}/api/surveys/${id}/submit`, {

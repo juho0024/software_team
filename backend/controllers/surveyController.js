@@ -15,10 +15,12 @@ const getSurveysByUser = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("That user was not found.");
   }
+
   const surveyIds = [...user.surveys];
   if (surveyIds.length === 0) {
     return res.status(200).json("No surveys were found");
   }
+
   const surveyList = [];
   for (let i = 0; i < surveyIds.length; i++) {
     const survey = await Survey.findById(surveyIds[i]);
@@ -30,6 +32,7 @@ const getSurveysByUser = asyncHandler(async (req, res) => {
       });
     }
   }
+
   res.status(200).json(surveyList);
 });
 
@@ -54,11 +57,13 @@ const createandUpdateSurvey = asyncHandler(async (req, res) => {
       creationTime,
       _id: survey_id,
     });
+
     const user = await User.findById(user_id);
     if (user) {
       user.surveys.push(survey_id);
       await user.save();
     }
+
     return res.status(201).json({ success: true, survey: newSurvey });
   }
 });
@@ -70,21 +75,40 @@ const saveResponsesToSurvey = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Survey not found");
   }
+
   const { questions } = req.body;
-  const updatedQuestions = survey.questions.map(original => {
-    const incoming = questions.find(q => q._id === original._id);
-    if (incoming && incoming.response) {
-      return {
-        ...original,
-        responses: [...original.responses, incoming.response]
-      };
-    }
-    return original;
-  });
+
+  const updatedQuestions = await Promise.all(
+    survey.questions.map(async original => {
+      const incoming = questions.find(q => q._id === original._id);
+      if (incoming && incoming.response) {
+        const existingResponses = original.responses || [];
+
+        // ✅ user_id → 이름 조회
+        const user = await User.findById(incoming.response.user_id);
+        const userName = user ? user.name : "익명";
+
+        const newResponse = {
+          ...incoming.response,
+          name: userName, // ✅ 이름 추가
+          time: new Date()
+        };
+
+        return {
+          ...original.toObject(),
+          responses: [...existingResponses, newResponse]
+        };
+      }
+      return original;
+    })
+  );
+
   survey.questions = updatedQuestions;
   const saved = await survey.save();
+
   res.status(200).json({ success: true, survey: saved });
 });
+
 
 const updateSurvey = asyncHandler(async (req, res) => {
   const survey = await Survey.findByIdAndUpdate(req.params.id, req.body, { new: true });
