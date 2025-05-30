@@ -20,7 +20,7 @@ export function Header() {
                   height="30"
                   className="d-inline-block align-top"
               />{" "}
-              SurveyMaker
+              GACHON PICK
             </Navbar.Brand>
 
             <Navbar.Toggle aria-controls="nav" />

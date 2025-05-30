@@ -1,60 +1,60 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // ✅ 비밀번호 해시를 위한 bcrypt 추가
 
-// ✅ JWT 토큰 생성
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+// ✅ JWT 토큰 생성 함수
+const generateToken = (payload) => {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
-// ✅ 사용자 정보 가져오기 (보호 라우트용)
+// ✅ 사용자 정보 가져오기
 const getUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
   res.status(200).json(user);
 });
 
-// ✅ 회원가입
-// @route   POST /users/register
+// ✅ 회원가입 (이름 + 비밀번호까지 등록)
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
     res.status(400);
-    throw new Error('모든 필드를 입력해주세요.');
+    throw new Error('이름, 이메일, 비밀번호를 모두 입력해주세요.');
   }
 
-  const userExists = await User.findOne({ email });
-  if (userExists) {
-    res.status(400);
-    throw new Error('이미 가입된 이메일입니다.');
-  }
-
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  const user = await User.create({
-    name,
-    email,
-    password: hashedPassword,
-    surveys: []
-  });
+  let user = await User.findOne({ email });
 
   if (user) {
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id)
-    });
+    // ✅ 기존 유저면 이름, 비밀번호만 업데이트
+    user.name = name;
+    user.password = await bcrypt.hash(password, 10); // 🔐 비번 해싱
+    await user.save();
   } else {
-    res.status(400);
-    throw new Error('회원가입에 실패했습니다.');
+    user = await User.create({
+      name,
+      email,
+      password: await bcrypt.hash(password, 10),
+      surveys: [],
+    });
   }
+
+  const token = generateToken({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+  });
+
+  res.status(201).json({
+    success: true,
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    token,
+  });
 });
 
-// ✅ 로그인
-// @route   POST /users/login
+// ✅ 로그인 (비밀번호 검증)
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -64,21 +64,31 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ email });
-  if (user && (await bcrypt.compare(password, user.password))) {
+
+  if (
+    user &&
+    user.password &&
+    await bcrypt.compare(password, user.password)
+  ) {
+    const token = generateToken({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+    });
+
     res.status(200).json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      token: generateToken(user._id)
+      token,
     });
   } else {
     res.status(401);
-    throw new Error('이메일 또는 비밀번호가 잘못되었습니다.');
+    throw new Error('로그인 정보가 일치하지 않습니다.');
   }
 });
 
 // ✅ 사용자 설문 업데이트
-// @route   PUT /users/updateSurveys/:id
 const updateUserSurveys = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) {
@@ -87,8 +97,7 @@ const updateUserSurveys = asyncHandler(async (req, res) => {
   }
 
   if (user.surveys.includes(req.body.survey_id)) {
-    res.status(200).json({ message: '이미 추가된 설문입니다.' });
-    return;
+    return res.status(200).json({ message: '이미 추가된 설문입니다.' });
   }
 
   user.surveys.push(req.body.survey_id);
@@ -97,7 +106,6 @@ const updateUserSurveys = asyncHandler(async (req, res) => {
 });
 
 // ✅ 사용자 삭제
-// @route   DELETE /users/delete/:id
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) {
@@ -115,5 +123,5 @@ module.exports = {
   registerUser,
   loginUser,
   updateUserSurveys,
-  deleteUser
+  deleteUser,
 };

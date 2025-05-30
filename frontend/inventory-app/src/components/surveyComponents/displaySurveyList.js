@@ -1,29 +1,23 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Table, Container, Col, Row, Button, Spinner } from "react-bootstrap";
+import { Table, Container, Col, Row, Button } from "react-bootstrap";
 import { serverUrl } from "../../variables/constants.js";
 import { useAuth } from "../../hooks/AuthContext";
 
 export function DisplaySurveyList({ sendSurveyId }) {
-    const [surveyList, setSurveyList] = useState(null);
-    const [tableItems, setTableItems] = useState(
-        <tr>
-            <td colSpan={3}>
-                <div style={{ textAlign: "center", padding: 20 }}>
-                    <Spinner animation="border" />
-                </div>
-            </td>
-        </tr>
-    );
+    const [mySurveys, setMySurveys] = useState(null);
+    const [allSurveys, setAllSurveys] = useState([]);
+    const [mySurveyItems, setMySurveyItems] = useState(null);
+    const [allSurveyItems, setAllSurveyItems] = useState(null);
 
     const { user, token } = useAuth();
     const navigate = useNavigate();
 
-    const fetchSurveyList = useCallback(async () => {
-        if (!user || !user._id || !token) return; // ✅ null 체크
+    const fetchSurveyLists = useCallback(async () => {
+        if (!user || !user._id || !token) return;
 
         try {
-            const res = await fetch(
+            const myRes = await fetch(
                 `${serverUrl}/api/surveys/surveys-by-user/${user._id}`,
                 {
                     headers: {
@@ -32,37 +26,41 @@ export function DisplaySurveyList({ sendSurveyId }) {
                     },
                 }
             );
-            const data = await res.json();
-
-            if (data === "No surveys were found") {
-                setTableItems(null);
-            } else {
-                setSurveyList(data);
+            const myData = await myRes.json();
+            if (myData !== "No surveys were found") {
+                setMySurveys(myData);
             }
+
+            const allRes = await fetch(`${serverUrl}/api/surveys`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+            const allData = await allRes.json();
+            setAllSurveys(allData);
         } catch (err) {
             console.error("❌ 설문 목록 가져오기 실패:", err);
         }
     }, [token, user]);
 
     useEffect(() => {
-        fetchSurveyList();
-    }, [fetchSurveyList]);
+        fetchSurveyLists();
+    }, [fetchSurveyLists]);
 
     useEffect(() => {
-        if (surveyList && Array.isArray(surveyList)) {
-            const items = surveyList.map((survey, idx) => (
-                <tr key={idx}>
+        if (!user || !user._id) return;
+
+        if (mySurveys && Array.isArray(mySurveys)) {
+            const items = mySurveys.map((survey, idx) => (
+                <tr key={`my-${idx}`}>
                     <td>
                         <Link to={`/create-survey/${survey._id}`} style={{ textDecoration: "none" }}>
                             {survey.title}
                         </Link>
                     </td>
                     <td>
-                        <Link
-                            to={`/display-survey/${survey._id}`}
-                            target="_blank"
-                            style={{ textDecoration: "none" }}
-                        >
+                        <Link to={`/display-survey/${survey._id}`} target="_blank" style={{ textDecoration: "none" }}>
                             설문 링크
                         </Link>
                     </td>
@@ -73,9 +71,29 @@ export function DisplaySurveyList({ sendSurveyId }) {
                     </td>
                 </tr>
             ));
-            setTableItems(items);
+            setMySurveyItems(items);
         }
-    }, [surveyList]);
+
+        if (allSurveys && Array.isArray(allSurveys)) {
+            const items = allSurveys
+                .filter(survey => survey.user_id !== user._id)
+                .map((survey, idx) => (
+                    <tr key={`all-${idx}`}>
+                        <td>
+                            <Link to={`/create-survey/${survey._id}`} style={{ textDecoration: "none" }}>
+                                {survey.title}
+                            </Link>
+                        </td>
+                        <td>
+                            <Link to={`/display-survey/${survey._id}`} target="_blank" style={{ textDecoration: "none" }}>
+                                설문 링크
+                            </Link>
+                        </td>
+                    </tr>
+                ));
+            setAllSurveyItems(items);
+        }
+    }, [mySurveys, allSurveys, user]);
 
     const handleCreateSurvey = () => {
         sendSurveyId(null);
@@ -103,7 +121,8 @@ export function DisplaySurveyList({ sendSurveyId }) {
                     </Col>
                 </Row>
 
-                {tableItems && (
+                {/* ✅ 내 설문 목록 (유지) */}
+                {mySurveyItems && (
                     <Row>
                         <Col className="text-center">
                             <h4 className="fw-bold">내 설문 목록</h4>
@@ -116,7 +135,27 @@ export function DisplaySurveyList({ sendSurveyId }) {
                                         <th>결과</th>
                                     </tr>
                                     </thead>
-                                    <tbody>{tableItems}</tbody>
+                                    <tbody>{mySurveyItems}</tbody>
+                                </Table>
+                            </div>
+                        </Col>
+                    </Row>
+                )}
+
+                {/* ✅ 진행중인 설문조사 (결과/등록자 컬럼 제거됨) */}
+                {allSurveyItems && (
+                    <Row>
+                        <Col className="text-center">
+                            <h4 className="fw-bold mt-5">진행중인 설문조사</h4>
+                            <div style={{ borderTop: "solid", paddingTop: 8 }}>
+                                <Table striped bordered hover style={{ width: "50%", margin: "auto" }}>
+                                    <thead>
+                                    <tr>
+                                        <th>설문 제목</th>
+                                        <th>설문 링크</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>{allSurveyItems}</tbody>
                                 </Table>
                             </div>
                         </Col>

@@ -2,6 +2,24 @@ const asyncHandler = require("express-async-handler");
 const Survey = require("../models/surveyModel");
 const User = require("../models/userModel");
 
+// ✅ 전체 설문 목록 가져오기
+const getAllSurveys = asyncHandler(async (req, res) => {
+  try {
+    const surveys = await Survey.find().populate("user_id", "email");
+
+    const formatted = surveys.map((s) => ({
+      ...s.toObject(),
+      email: s.user_id?.email || "알 수 없음",
+      user_id: s.user_id?._id || null,
+    }));
+
+    res.status(200).json(formatted);
+  } catch (error) {
+    console.error("❌ 전체 설문 가져오기 오류:", error);
+    res.status(500).json({ message: "서버 오류" });
+  }
+});
+
 // 설문 가져오기
 const getSurvey = asyncHandler(async (req, res) => {
   const survey = await Survey.findById(req.params.id);
@@ -42,11 +60,15 @@ const createandUpdateSurvey = asyncHandler(async (req, res) => {
 
   let existing = await Survey.findById(survey_id);
   if (existing) {
-    const updated = await Survey.findByIdAndUpdate(survey_id, {
-      questions,
-      title,
-      description,
-    }, { new: true });
+    const updated = await Survey.findByIdAndUpdate(
+      survey_id,
+      {
+        questions,
+        title,
+        description,
+      },
+      { new: true }
+    );
     return res.status(200).json({ success: true, survey: updated });
   } else {
     const newSurvey = await Survey.create({
@@ -79,24 +101,23 @@ const saveResponsesToSurvey = asyncHandler(async (req, res) => {
   const { questions } = req.body;
 
   const updatedQuestions = await Promise.all(
-    survey.questions.map(async original => {
-      const incoming = questions.find(q => q._id === original._id);
+    survey.questions.map(async (original) => {
+      const incoming = questions.find((q) => q._id === original._id);
       if (incoming && incoming.response) {
         const existingResponses = original.responses || [];
 
-        // ✅ user_id → 이름 조회
         const user = await User.findById(incoming.response.user_id);
         const userName = user ? user.name : "익명";
 
         const newResponse = {
           ...incoming.response,
-          name: userName, // ✅ 이름 추가
-          time: new Date()
+          name: userName,
+          time: new Date(),
         };
 
         return {
           ...original.toObject(),
-          responses: [...existingResponses, newResponse]
+          responses: [...existingResponses, newResponse],
         };
       }
       return original;
@@ -109,9 +130,10 @@ const saveResponsesToSurvey = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, survey: saved });
 });
 
-
 const updateSurvey = asyncHandler(async (req, res) => {
-  const survey = await Survey.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const survey = await Survey.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+  });
   if (!survey) {
     res.status(404);
     throw new Error("Survey not found");
@@ -134,5 +156,6 @@ module.exports = {
   createandUpdateSurvey,
   updateSurvey,
   deleteSurvey,
-  saveResponsesToSurvey
+  saveResponsesToSurvey,
+  getAllSurveys, // ✅ export에 추가
 };

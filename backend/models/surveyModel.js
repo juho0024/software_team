@@ -3,8 +3,8 @@ const mongoose = require("mongoose");
 const responseSchema = new mongoose.Schema({
   response: String,
   time: Date,
-  user_id: String,  // ✅ 응답자 ID 포함
-  _id: String ,       // 프론트에서 생성된 고유 응답 ID
+  user_id: String,
+  _id: String,
   name: String
 });
 
@@ -20,7 +20,14 @@ const surveySchema = new mongoose.Schema({
   _id: { type: String, required: true },
   title: { type: String, required: true },
   description: String,
-  user_id: { type: String, required: true },
+
+  // ✅ 여기 고쳤음
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
   creationTime: Date,
   questions: [questionSchema]
 });

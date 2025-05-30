@@ -34,6 +34,7 @@
     "jwks-rsa": "^2.1.1",
     "mongoose": "^6.3.2",
     "morgan": "~1.9.1",
+    "nodemailer": "^7.0.3",
     "nodemon": "^2.0.16",
     "passport": "^0.5.2",
     "passport-openidconnect": "^0.1.1"

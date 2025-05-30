@@ -20,7 +20,7 @@ function LoginForm() {
         setErrorMsg('');
 
         try {
-            const res = await apiFetch('/users/login', {
+            const res = await apiFetch('/api/user/login', {
                 method: 'POST',
                 body: JSON.stringify({ email, password }),
             });

@@ -14,8 +14,7 @@ export function Footer() {
       <Container fluid>
         <Row>
           <Col className="text-center py-2">
-            &copy; 2025 설문 플랫폼 by Ckaminski Labs
-          </Col>
+            &copy; 2025 설문 플랫폼 by SOFTWARE TEAM 6</Col>
         </Row>
       </Container>
     </footer>
